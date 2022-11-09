@@ -1,7 +1,6 @@
 type Queu = {
     fn: Function;
     arguments: any;
-    started?: boolean;
     priority: number;
 };
 type Options = Partial<{
