@@ -2,11 +2,18 @@ type Queu = {
   fn: Function;
   arguments: any;
   priority: number;
+  resolve: Function;
+  reject: Function;
+  started?: boolean;
 };
 
 type Options = Partial<{
   priority: number;
-  execute: boolean;
+}>;
+
+type OptionsConstructor = Partial<{
+  maxSize: number;
+  maxConcurrency: number;
 }>;
 
 class Enqueu {
@@ -17,7 +24,11 @@ class Enqueu {
   private _executedFunction: Function;
   private _executionFinishFunction: Function;
 
-  constructor(public maxSize: number = Infinity) {}
+  private options: OptionsConstructor = {};
+
+  constructor(options: OptionsConstructor = {}) {
+    Object.assign(this.options, { maxConcurrency: 1 }, options);
+  }
 
   get isPaused() {
     return this._paused;
@@ -32,21 +43,46 @@ class Enqueu {
   }
 
   /**
+   * Return important elements of queu element
+   * @param queuElement
+   * @returns
+   */
+  private computeQueuElement(queuElement: Queu) {
+    return {
+      fn: queuElement.fn,
+      arguments: queuElement.arguments,
+      priority: queuElement.priority,
+    };
+  }
+
+  /**
    * Start the next element from the queu
    */
-  private async startNextQueuElement() {
-    const actual = this._queu[0];
+  private startNextQueuElement() {
+    const actual = this._queu.find((e) => !e.started);
 
-    if (this._executedFunction) this._executedFunction(actual);
+    if (!actual) return;
 
-    await actual.fn(...actual.arguments);
+    actual.started = true;
 
-    this._queu.shift(); //after execution we remove it
+    if (this._executedFunction)
+      this._executedFunction(this.computeQueuElement(actual));
 
-    if (this._executionFinishFunction) this._executionFinishFunction(actual);
+    actual
+      .fn(...actual.arguments)
+      .then(actual.resolve)
+      .catch(actual.reject)
+      .finally(() => {
+        //after execution we remove it
+        const index = this._queu.findIndex((e) => e === actual);
+        this._queu.splice(index, 1);
 
-    if (this._queu.length > 0) this.startNextQueuElement();
-    else if (this._emptyFunction) this._emptyFunction();
+        if (this._executionFinishFunction)
+          this._executionFinishFunction(this.computeQueuElement(actual));
+
+        if (this._queu.length > 0) this.startNextQueuElement();
+        else if (this._emptyFunction) this._emptyFunction();
+      });
   }
 
   /**
@@ -54,9 +90,9 @@ class Enqueu {
    * @param fn
    * @param Options
    */
-  public add(fn: Function, options: Options = {}) {
+  public async add(fn: Function, options: Options = {}) {
     const queuFn = this.createFn(fn, options);
-    queuFn();
+    return await queuFn();
   }
 
   /**
@@ -65,16 +101,28 @@ class Enqueu {
   public createFn(fn: Function, options: Options = {}) {
     const obj = this; //no function arrow because we need access to "arguments"
 
-    return async function () {
-      if (obj._queu.length === obj.maxSize) return; //if max size
+    return function () {
+      return new Promise((resolve, reject) => {
+        if (obj._queu.length === obj.options.maxSize) return; //if max size
 
-      obj._queu.push({ fn, arguments, priority: options.priority ?? 0 }); // adding to the queu
-      if (options.priority) obj._queu.sort((a, b) => a.priority - b.priority); //sorting by priority
+        // adding to the queu
+        const queuElement = {
+          fn,
+          arguments,
+          priority: options.priority ?? Infinity,
+          resolve,
+          reject,
+        };
+        obj._queu.push(queuElement);
 
-      //starting the function
-      if ((obj._queu.length === 1 && !obj._paused) || options.execute) {
-        await obj.startNextQueuElement();
-      }
+        //sorting by priority
+        if (options.priority) obj._queu.sort((a, b) => a.priority - b.priority);
+
+        //starting the function
+        if (obj._queu.length <= obj.options.maxConcurrency && !obj._paused) {
+          obj.startNextQueuElement();
+        }
+      });
     };
   }
 

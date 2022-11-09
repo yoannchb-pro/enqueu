@@ -9,13 +9,39 @@
 </head>
 <body>
     <button>Click me up</button>
+    <button>Click me up without enqueu</button>
 </body>
 <script>
-const queu = new Enqueu(3);
+const queu = new Enqueu({ maxSize: 3 }); //the maximum size of the queu is 3 (other will be throwed off)
 
-document.addEventListener("click", queu.createFn(async function(event){
-    await new Promise(_ => setTimeout(_, 2000));
-    console.log(event)
-}))
+let count = 20;
+
+document.querySelector("button").addEventListener(
+  "click",
+  queu.createFn(
+    function(){
+      count = count/2;
+      return new Promise((r) =>
+        setTimeout(function () {
+            console.log(count);
+            r(count);
+        }, count * 1000)
+      )
+    }
+  )
+);
+
+document.querySelectorAll("button")[1].addEventListener(
+  "click",
+    function(){
+      count = count/2;
+      return new Promise((r) =>
+        setTimeout(function () {
+            console.log(count);
+            r(count);
+        }, count * 1000)
+      )
+    }
+);
 </script>
 </html>

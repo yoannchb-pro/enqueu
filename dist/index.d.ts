@@ -2,22 +2,39 @@ type Queu = {
     fn: Function;
     arguments: any;
     priority: number;
+    resolve: Function;
+    reject: Function;
+    started?: boolean;
 };
 type Options = Partial<{
     priority: number;
-    execute: boolean;
+}>;
+type OptionsConstructor = Partial<{
+    maxSize: number;
+    maxConcurrency: number;
 }>;
 declare class Enqueu {
-    maxSize: number;
     private _queu;
     private _paused;
     private _emptyFunction;
     private _executedFunction;
     private _executionFinishFunction;
-    constructor(maxSize?: number);
+    private options;
+    constructor(options?: OptionsConstructor);
     get isPaused(): boolean;
     get pending(): number;
     get queu(): Queu[];
+    /**
+     * Return important elements of queu element
+     * @param queuElement
+     * @returns
+     */
+    /**
+     * Return important elements of queu element
+     * @param queuElement
+     * @returns
+     */
+    private computeQueuElement;
     /**
      * Start the next element from the queu
      */
@@ -35,14 +52,14 @@ declare class Enqueu {
      * @param fn
      * @param Options
      */
-    add(fn: Function, options?: Options): void;
+    add(fn: Function, options?: Options): Promise<unknown>;
     /**
      * Create a function that register other function in the queu
      */
     /**
      * Create a function that register other function in the queu
      */
-    createFn(fn: Function, options?: Options): () => Promise<void>;
+    createFn(fn: Function, options?: Options): () => Promise<unknown>;
     /**
      * Remove element from the queu
      * @param fn

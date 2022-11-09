@@ -4,29 +4,28 @@ function wait(t) {
   return new Promise((_) => setTimeout(_, t));
 }
 
-const queu = new Enqueu(3);
-let id = 0;
+const queu = new Enqueu({ maxSize: 3 });
 
 queu.pause();
 
 queu.add(function () {
-  console.log(++id);
+  console.log(1);
+  return wait(3000);
+});
+
+queu.add(function () {
+  console.log(2);
   return wait(2000);
 });
 
 queu.add(function () {
-  console.log(++id);
-  return wait(2000);
+  console.log(3);
+  return wait(1000);
 });
 
 queu.add(function () {
-  console.log(++id);
-  return wait(2000);
-});
-
-queu.add(function () {
-  console.log(++id);
-  return wait(2000);
+  console.log(4);
+  return wait(1);
 });
 
 queu.onQueuElementExecuted(function () {

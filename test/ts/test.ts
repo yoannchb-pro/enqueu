@@ -4,7 +4,7 @@ function wait(t: number) {
   return new Promise((_) => setTimeout(_, t));
 }
 
-const queu = new Enqueu(3);
+const queu = new Enqueu({ maxSize: 3 });
 let id = 0;
 
 queu.pause();
